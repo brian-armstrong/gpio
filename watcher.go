@@ -61,6 +61,8 @@ func (h fdHeap) FdSet() *syscall.FdSet {
 const watcherCmdChanLen = 32
 const notifyChanLen = 32
 
+// Watcher provides asynchronous notifications on input changes
+// The user should supply it pins to watch with AddPin and then wait for changes with Watch
 type Watcher struct {
 	pins       map[uintptr]Pin
 	files      map[uintptr]*os.File
@@ -69,7 +71,7 @@ type Watcher struct {
 	notifyChan chan watcherNotify
 }
 
-// Watcher provides asynchronous notifications on input changes
+// NewWatcher creates a new Watcher instance for asynchronous inputs
 func NewWatcher() *Watcher {
 	w := &Watcher{
 		pins:       make(map[uintptr]Pin),
