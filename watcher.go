@@ -30,19 +30,19 @@ type watcherNotify struct {
 	value uint
 }
 
-type FDHeap []uintptr
+type fdHeap []uintptr
 
-func (h FDHeap) Len() int { return len(h) }
+func (h fdHeap) Len() int { return len(h) }
 
 // Less is actually greater (we want a max heap)
-func (h FDHeap) Less(i, j int) bool { return h[i] > h[j] }
-func (h FDHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h fdHeap) Less(i, j int) bool { return h[i] > h[j] }
+func (h fdHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 
-func (h *FDHeap) Push(x interface{}) {
+func (h *fdHeap) Push(x interface{}) {
 	*h = append(*h, x.(uintptr))
 }
 
-func (h *FDHeap) Pop() interface{} {
+func (h *fdHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
@@ -50,7 +50,7 @@ func (h *FDHeap) Pop() interface{} {
 	return x
 }
 
-func (h FDHeap) FdSet() *syscall.FdSet {
+func (h fdHeap) FdSet() *syscall.FdSet {
 	fdset := &syscall.FdSet{}
 	for _, val := range h {
 		fdset.Bits[val/64] |= 1 << uint(val) % 64
@@ -64,16 +64,17 @@ const notifyChanLen = 32
 type Watcher struct {
 	pins       map[uintptr]Pin
 	files      map[uintptr]*os.File
-	fds        FDHeap
+	fds        fdHeap
 	cmdChan    chan watcherCmd
 	notifyChan chan watcherNotify
 }
 
+// Watcher provides asynchronous notifications on input changes
 func NewWatcher() *Watcher {
 	w := &Watcher{
 		pins:       make(map[uintptr]Pin),
 		files:      make(map[uintptr]*os.File),
-		fds:        FDHeap{},
+		fds:        fdHeap{},
 		cmdChan:    make(chan watcherCmd, watcherCmdChanLen),
 		notifyChan: make(chan watcherNotify, notifyChanLen),
 	}
@@ -246,6 +247,8 @@ func exportGPIO(p Pin) {
 	edge.Write([]byte("both"))
 }
 
+// AddPin adds a new pin to be watched for changes
+// The pin provided should be the pin known by the kernel
 func (w *Watcher) AddPin(p Pin) {
 	exportGPIO(p)
 	w.cmdChan <- watcherCmd{
@@ -254,6 +257,7 @@ func (w *Watcher) AddPin(p Pin) {
 	}
 }
 
+// RemovePin stops the watcher from watching the specified pin
 func (w *Watcher) RemovePin(p Pin) {
 	w.cmdChan <- watcherCmd{
 		pin:    p,
@@ -261,11 +265,17 @@ func (w *Watcher) RemovePin(p Pin) {
 	}
 }
 
+// Watch blocks until one change occurs on one of the watched pins
+// It returns the pin which changed and its new value
+// Because the Watcher is not perfectly realtime it may miss very high frequency changes
+// If that happens, it's possible to see consecutive changes with the same value
+// Also, if the input is connected to a mechanical switch, the user of this library must deal with debouncing
 func (w *Watcher) Watch() (p Pin, v uint) {
 	notification := <-w.notifyChan
 	return notification.pin, notification.value
 }
 
+// Close stops the watcher and releases all resources
 func (w *Watcher) Close() {
 	w.cmdChan <- watcherCmd{
 		pin:    0,
