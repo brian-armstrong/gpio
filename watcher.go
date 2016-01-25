@@ -222,9 +222,10 @@ func exportGPIO(p Pin) {
 		fmt.Printf("failed to open gpio export file for writing\n")
 		os.Exit(1)
 	}
-	defer export.Close()
-
 	export.Write([]byte(strconv.Itoa(int(p))))
+	export.Close()
+
+	time.Sleep(100 * time.Millisecond)
 
 	dir, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", p), os.O_WRONLY, 0600)
 	if err != nil {
