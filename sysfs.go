@@ -84,11 +84,12 @@ func setEdgeTrigger(p Pin, e edge) {
 	}
 }
 
-func openPin(p Pin) {
+func openPin(p Pin) Pin {
 	f, err := os.Open(fmt.Sprintf("/sys/class/gpio/gpio%d/value", p.Number))
 	if err != nil {
 		fmt.Printf("failed to open gpio %d value file for reading\n", p.Number)
 		os.Exit(1)
 	}
 	p.f = f
+	return p
 }

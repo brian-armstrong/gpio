@@ -17,7 +17,7 @@ func NewInput(p uint) Pin {
 	exportGPIO(pin)
 	time.Sleep(10 * time.Millisecond)
 	setDirection(pin, inDirection, 0)
-	openPin(pin)
+	pin = openPin(pin)
 	return pin
 }
 
@@ -32,7 +32,7 @@ func NewOutput(p uint, initHigh bool) Pin {
 		initVal = uint(1)
 	}
 	setDirection(pin, outDirection, initVal)
-	openPin(pin)
+	pin = openPin(pin)
 	return pin
 }
 
