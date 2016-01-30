@@ -137,11 +137,7 @@ func (w *Watcher) fdSelect() {
 }
 
 func (w *Watcher) addPin(p Pin) {
-	f, err := os.Open(fmt.Sprintf("/sys/class/gpio/gpio%d/value", p))
-	if err != nil {
-		fmt.Printf("failed to open gpio %d value file for reading\n", p)
-		os.Exit(1)
-	}
+	f := openPin(p)
 	fd := f.Fd()
 	w.pins[fd] = p
 	w.files[fd] = f
