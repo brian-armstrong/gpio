@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"syscall"
 	"time"
 )
@@ -219,40 +218,13 @@ func (w *Watcher) watch() {
 	}
 }
 
-func exportGPIO(p Pin) {
-	export, err := os.OpenFile("/sys/class/gpio/export", os.O_WRONLY, 0600)
-	if err != nil {
-		fmt.Printf("failed to open gpio export file for writing\n")
-		os.Exit(1)
-	}
-	export.Write([]byte(strconv.Itoa(int(p))))
-	export.Close()
-
-	time.Sleep(100 * time.Millisecond)
-
-	dir, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", p), os.O_WRONLY, 0600)
-	if err != nil {
-		fmt.Printf("failed to open gpio %d direction file for writing\n", p)
-		os.Exit(1)
-	}
-	defer dir.Close()
-
-	dir.Write([]byte("in"))
-
-	edge, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/edge", p), os.O_WRONLY, 0600)
-	if err != nil {
-		fmt.Printf("failed to open gpio %d edge file for writing\n", p)
-		os.Exit(1)
-	}
-	defer edge.Close()
-
-	edge.Write([]byte("both"))
-}
-
 // AddPin adds a new pin to be watched for changes
 // The pin provided should be the pin known by the kernel
 func (w *Watcher) AddPin(p Pin) {
 	exportGPIO(p)
+	time.Sleep(10 * time.Millisecond) // XXX get rid of this? we have to wait for the export to finish
+	setDirection(p, inDirection, 0)
+	setEdgeTrigger(p, edgeBoth)
 	w.cmdChan <- watcherCmd{
 		pin:    p,
 		action: watcherAdd,
