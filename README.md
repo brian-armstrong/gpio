@@ -12,8 +12,8 @@ Here is an example of how to use the Watcher. Note that the GPIO numbers we want
 
 ```
 watcher := gpio.NewWatcher()
-watcher.AddPin(gpio.Pin(22))
-watcher.AddPin(gpio.Pin(27))
+watcher.AddPin(22)
+watcher.AddPin(27)
 defer watcher.Close()
 
 go func() {

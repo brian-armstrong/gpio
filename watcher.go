@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-type Pin uint
-
 type watcherAction int
 
 const (
@@ -64,7 +62,6 @@ const notifyChanLen = 32
 // The user should supply it pins to watch with AddPin and then wait for changes with Watch
 type Watcher struct {
 	pins       map[uintptr]Pin
-	files      map[uintptr]*os.File
 	fds        fdHeap
 	cmdChan    chan watcherCmd
 	notifyChan chan watcherNotify
@@ -74,7 +71,6 @@ type Watcher struct {
 func NewWatcher() *Watcher {
 	w := &Watcher{
 		pins:       make(map[uintptr]Pin),
-		files:      make(map[uintptr]*os.File),
 		fds:        fdHeap{},
 		cmdChan:    make(chan watcherCmd, watcherCmdChanLen),
 		notifyChan: make(chan watcherNotify, notifyChanLen),
@@ -87,7 +83,8 @@ func NewWatcher() *Watcher {
 func (w *Watcher) notify(fdset *syscall.FdSet) {
 	for _, fd := range w.fds {
 		if (fdset.Bits[fd/64] & (1 << uint(fd) % 64)) != 0 {
-			file := w.files[fd]
+			pin := w.pins[fd]
+			file := pin.f
 			file.Seek(0, 0)
 			buf := make([]byte, 1)
 			_, err := file.Read(buf)
@@ -100,7 +97,7 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 				os.Exit(1)
 			}
 			msg := watcherNotify{
-				pin: w.pins[fd],
+				pin: pin,
 			}
 			c := buf[0]
 			switch c {
@@ -137,10 +134,8 @@ func (w *Watcher) fdSelect() {
 }
 
 func (w *Watcher) addPin(p Pin) {
-	f := openPin(p)
-	fd := f.Fd()
+	fd := p.f.Fd()
 	w.pins[fd] = p
-	w.files[fd] = f
 	heap.Push(&w.fds, fd)
 }
 
@@ -152,10 +147,9 @@ func (w *Watcher) removeFd(fd uintptr) {
 			break
 		}
 	}
-	f := w.files[fd]
-	f.Close()
+	pin := w.pins[fd]
+	pin.f.Close()
 	delete(w.pins, fd)
-	delete(w.files, fd)
 }
 
 // removePin is only a wrapper around removeFd
@@ -163,7 +157,7 @@ func (w *Watcher) removeFd(fd uintptr) {
 func (w *Watcher) removePin(p Pin) {
 	// we don't index by pin, so go looking
 	for fd, pin := range w.pins {
-		if pin == p {
+		if pin.Number == p.Number {
 			// found pin
 			w.removeFd(fd)
 			return
@@ -216,21 +210,22 @@ func (w *Watcher) watch() {
 
 // AddPin adds a new pin to be watched for changes
 // The pin provided should be the pin known by the kernel
-func (w *Watcher) AddPin(p Pin) {
-	exportGPIO(p)
-	time.Sleep(10 * time.Millisecond) // XXX get rid of this? we have to wait for the export to finish
-	setDirection(p, inDirection, 0)
-	setEdgeTrigger(p, edgeBoth)
+func (w *Watcher) AddPin(p uint) {
+	pin := NewInput(p)
+	setEdgeTrigger(pin, edgeBoth)
 	w.cmdChan <- watcherCmd{
-		pin:    p,
+		pin:    pin,
 		action: watcherAdd,
 	}
 }
 
 // RemovePin stops the watcher from watching the specified pin
-func (w *Watcher) RemovePin(p Pin) {
+func (w *Watcher) RemovePin(p uint) {
+	pin := Pin{
+		Number: p,
+	}
 	w.cmdChan <- watcherCmd{
-		pin:    p,
+		pin:    pin,
 		action: watcherRemove,
 	}
 }
@@ -240,15 +235,15 @@ func (w *Watcher) RemovePin(p Pin) {
 // Because the Watcher is not perfectly realtime it may miss very high frequency changes
 // If that happens, it's possible to see consecutive changes with the same value
 // Also, if the input is connected to a mechanical switch, the user of this library must deal with debouncing
-func (w *Watcher) Watch() (p Pin, v uint) {
+func (w *Watcher) Watch() (p uint, v uint) {
 	notification := <-w.notifyChan
-	return notification.pin, notification.value
+	return notification.pin.Number, notification.value
 }
 
 // Close stops the watcher and releases all resources
 func (w *Watcher) Close() {
 	w.cmdChan <- watcherCmd{
-		pin:    0,
+		pin:    Pin{},
 		action: watcherClose,
 	}
 }

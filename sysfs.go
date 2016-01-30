@@ -29,7 +29,7 @@ func exportGPIO(p Pin) {
 		os.Exit(1)
 	}
 	defer export.Close()
-	export.Write([]byte(strconv.Itoa(int(p))))
+	export.Write([]byte(strconv.Itoa(int(p.Number))))
 }
 
 func unexportGPIO(p Pin) {
@@ -39,13 +39,13 @@ func unexportGPIO(p Pin) {
 		os.Exit(1)
 	}
 	defer export.Close()
-	export.Write([]byte(strconv.Itoa(int(p))))
+	export.Write([]byte(strconv.Itoa(int(p.Number))))
 }
 
 func setDirection(p Pin, d direction, initialValue uint) {
-	dir, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", p), os.O_WRONLY, 0600)
+	dir, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", p.Number), os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Printf("failed to open gpio %d direction file for writing\n", p)
+		fmt.Printf("failed to open gpio %d direction file for writing\n", p.Number)
 		os.Exit(1)
 	}
 	defer dir.Close()
@@ -58,14 +58,14 @@ func setDirection(p Pin, d direction, initialValue uint) {
 	case d == outDirection && initialValue == 1:
 		dir.Write([]byte("high"))
 	default:
-		panic(fmt.Sprintf("setDirection called with invalid direction %d", d))
+		panic(fmt.Sprintf("setDirection called with invalid direction or initialValue, %d, %d", d, initialValue))
 	}
 }
 
 func setEdgeTrigger(p Pin, e edge) {
-	edge, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/edge", p), os.O_WRONLY, 0600)
+	edge, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/edge", p.Number), os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Printf("failed to open gpio %d edge file for writing\n", p)
+		fmt.Printf("failed to open gpio %d edge file for writing\n", p.Number)
 		os.Exit(1)
 	}
 	defer edge.Close()
@@ -84,11 +84,11 @@ func setEdgeTrigger(p Pin, e edge) {
 	}
 }
 
-func openPin(p Pin) *os.File {
-	f, err := os.Open(fmt.Sprintf("/sys/class/gpio/gpio%d/value", p))
+func openPin(p Pin) {
+	f, err := os.Open(fmt.Sprintf("/sys/class/gpio/gpio%d/value", p.Number))
 	if err != nil {
-		fmt.Printf("failed to open gpio %d value file for reading\n", p)
+		fmt.Printf("failed to open gpio %d value file for reading\n", p.Number)
 		os.Exit(1)
 	}
-	return f
+	p.f = f
 }
