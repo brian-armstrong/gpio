@@ -93,3 +93,22 @@ func openPin(p Pin) Pin {
 	p.f = f
 	return p
 }
+
+func readPin(p Pin) (val uint, err error) {
+	file := p.f
+	file.Seek(0, 0)
+	buf := make([]byte, 1)
+	_, err = file.Read(buf)
+	if err != nil {
+		return 0, err
+	}
+	c := buf[0]
+	switch c {
+	case '0':
+		return 0, nil
+	case '1':
+		return 1, nil
+	default:
+		return 0, fmt.Errorf("read inconsistent value in pinfile, %c", c)
+	}
+}

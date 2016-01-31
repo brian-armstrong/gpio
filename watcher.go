@@ -84,10 +84,7 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 	for _, fd := range w.fds {
 		if (fdset.Bits[fd/64] & (1 << uint(fd) % 64)) != 0 {
 			pin := w.pins[fd]
-			file := pin.f
-			file.Seek(0, 0)
-			buf := make([]byte, 1)
-			_, err := file.Read(buf)
+			val, err := pin.Read()
 			if err != nil {
 				if err == io.EOF {
 					w.removeFd(fd)
@@ -97,17 +94,8 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 				os.Exit(1)
 			}
 			msg := watcherNotify{
-				pin: pin,
-			}
-			c := buf[0]
-			switch c {
-			case '0':
-				msg.value = 0
-			case '1':
-				msg.value = 1
-			default:
-				fmt.Printf("read inconsistent value in pinfile, %c", c)
-				os.Exit(1)
+				pin:   pin,
+				value: val,
 			}
 			select {
 			case w.notifyChan <- msg:

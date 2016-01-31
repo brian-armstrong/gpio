@@ -6,8 +6,9 @@ import (
 )
 
 type Pin struct {
-	Number uint
-	f      *os.File
+	Number    uint
+	direction direction
+	f         *os.File
 }
 
 func NewInput(p uint) Pin {
@@ -16,6 +17,7 @@ func NewInput(p uint) Pin {
 	}
 	exportGPIO(pin)
 	time.Sleep(10 * time.Millisecond)
+	pin.direction = inDirection
 	setDirection(pin, inDirection, 0)
 	pin = openPin(pin)
 	return pin
@@ -31,6 +33,7 @@ func NewOutput(p uint, initHigh bool) Pin {
 	if initHigh {
 		initVal = uint(1)
 	}
+	pin.direction = outDirection
 	setDirection(pin, outDirection, initVal)
 	pin = openPin(pin)
 	return pin
@@ -38,4 +41,8 @@ func NewOutput(p uint, initHigh bool) Pin {
 
 func (p Pin) Close() {
 	p.f.Close()
+}
+
+func (p Pin) Read() (value uint, err error) {
+	return readPin(p)
 }
