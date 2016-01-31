@@ -84,8 +84,12 @@ func setEdgeTrigger(p Pin, e edge) {
 	}
 }
 
-func openPin(p Pin) Pin {
-	f, err := os.Open(fmt.Sprintf("/sys/class/gpio/gpio%d/value", p.Number))
+func openPin(p Pin, write bool) Pin {
+	flags := os.O_RDONLY
+	if write {
+		flags = os.O_RDWR
+	}
+	f, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/value", p.Number), flags, 0600)
 	if err != nil {
 		fmt.Printf("failed to open gpio %d value file for reading\n", p.Number)
 		os.Exit(1)
@@ -111,4 +115,18 @@ func readPin(p Pin) (val uint, err error) {
 	default:
 		return 0, fmt.Errorf("read inconsistent value in pinfile, %c", c)
 	}
+}
+
+func writePin(p Pin, v uint) error {
+	var buf []byte
+	switch v {
+	case 0:
+		buf = []byte{'0'}
+	case 1:
+		buf = []byte{'1'}
+	default:
+		return fmt.Errorf("invalid output value %d", v)
+	}
+	_, err := p.f.Write(buf)
+	return err
 }
