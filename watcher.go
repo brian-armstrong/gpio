@@ -22,9 +22,9 @@ type watcherCmd struct {
 	action watcherAction
 }
 
-type watcherNotify struct {
+type WatcherNotify struct {
 	pin   Pin
-	value uint
+	value Value
 }
 
 type fdHeap []uintptr
@@ -64,7 +64,7 @@ type Watcher struct {
 	pins       map[uintptr]Pin
 	fds        fdHeap
 	cmdChan    chan watcherCmd
-	notifyChan chan watcherNotify
+	NotifyChan chan WatcherNotify
 }
 
 // NewWatcher creates a new Watcher instance for asynchronous inputs
@@ -73,7 +73,7 @@ func NewWatcher() *Watcher {
 		pins:       make(map[uintptr]Pin),
 		fds:        fdHeap{},
 		cmdChan:    make(chan watcherCmd, watcherCmdChanLen),
-		notifyChan: make(chan watcherNotify, notifyChanLen),
+		NotifyChan: make(chan WatcherNotify, notifyChanLen),
 	}
 	heap.Init(&w.fds)
 	go w.watch()
@@ -93,12 +93,12 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 				fmt.Printf("failed to read pinfile, %s", err)
 				os.Exit(1)
 			}
-			msg := watcherNotify{
+			msg := WatcherNotify{
 				pin:   pin,
 				value: val,
 			}
 			select {
-			case w.notifyChan <- msg:
+			case w.NotifyChan <- msg:
 			default:
 			}
 		}
@@ -199,8 +199,12 @@ func (w *Watcher) watch() {
 // AddPin adds a new pin to be watched for changes
 // The pin provided should be the pin known by the kernel
 func (w *Watcher) AddPin(p uint) {
-	pin := NewInput(p)
-	setEdgeTrigger(pin, edgeBoth)
+	w.AddPinWithEdgeAndLogic(p, ActiveHigh, EdgeBoth)
+}
+
+func (w *Watcher) AddPinWithEdgeAndLogic(p uint, logicLevel LogicLevel, edge Edge) {
+	pin := NewInput(p, logicLevel)
+	setEdgeTrigger(pin, edge)
 	w.cmdChan <- watcherCmd{
 		pin:    pin,
 		action: watcherAdd,
@@ -223,8 +227,8 @@ func (w *Watcher) RemovePin(p uint) {
 // Because the Watcher is not perfectly realtime it may miss very high frequency changes
 // If that happens, it's possible to see consecutive changes with the same value
 // Also, if the input is connected to a mechanical switch, the user of this library must deal with debouncing
-func (w *Watcher) Watch() (p uint, v uint) {
-	notification := <-w.notifyChan
+func (w *Watcher) Watch() (p uint, v Value) {
+	notification := <-w.NotifyChan
 	return notification.pin.Number, notification.value
 }
 

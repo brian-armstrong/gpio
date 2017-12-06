@@ -1,25 +1,40 @@
 package gpio
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 )
 
-type direction uint
+type Direction uint
 
 const (
-	inDirection direction = iota
-	outDirection
+	InDirection Direction = iota
+	OutDirection
 )
 
-type edge uint
+type Edge uint
 
 const (
-	edgeNone edge = iota
-	edgeRising
-	edgeFalling
-	edgeBoth
+	EdgeNone Edge = iota
+	EdgeRising
+	EdgeFalling
+	EdgeBoth
+)
+
+type LogicLevel uint
+
+const (
+	ActiveHigh LogicLevel = iota
+	ActiveLow
+)
+
+type Value uint
+
+const (
+	Inactive Value = 0
+	Active   Value = 1
 )
 
 func exportGPIO(p Pin) {
@@ -42,7 +57,7 @@ func unexportGPIO(p Pin) {
 	export.Write([]byte(strconv.Itoa(int(p.Number))))
 }
 
-func setDirection(p Pin, d direction, initialValue uint) {
+func setDirection(p Pin, d Direction, initialValue uint) {
 	dir, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", p.Number), os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Printf("failed to open gpio %d direction file for writing\n", p.Number)
@@ -51,18 +66,18 @@ func setDirection(p Pin, d direction, initialValue uint) {
 	defer dir.Close()
 
 	switch {
-	case d == inDirection:
+	case d == InDirection:
 		dir.Write([]byte("in"))
-	case d == outDirection && initialValue == 0:
+	case d == OutDirection && initialValue == 0:
 		dir.Write([]byte("low"))
-	case d == outDirection && initialValue == 1:
+	case d == OutDirection && initialValue == 1:
 		dir.Write([]byte("high"))
 	default:
 		panic(fmt.Sprintf("setDirection called with invalid direction or initialValue, %d, %d", d, initialValue))
 	}
 }
 
-func setEdgeTrigger(p Pin, e edge) {
+func setEdgeTrigger(p Pin, e Edge) {
 	edge, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/edge", p.Number), os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Printf("failed to open gpio %d edge file for writing\n", p.Number)
@@ -71,17 +86,35 @@ func setEdgeTrigger(p Pin, e edge) {
 	defer edge.Close()
 
 	switch e {
-	case edgeNone:
+	case EdgeNone:
 		edge.Write([]byte("none"))
-	case edgeRising:
+	case EdgeRising:
 		edge.Write([]byte("rising"))
-	case edgeFalling:
+	case EdgeFalling:
 		edge.Write([]byte("falling"))
-	case edgeBoth:
+	case EdgeBoth:
 		edge.Write([]byte("both"))
 	default:
 		panic(fmt.Sprintf("setEdgeTrigger called with invalid edge %d", e))
 	}
+}
+
+func setLogicLevel(p Pin, l LogicLevel) error {
+	level, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/active_low", p.Number), os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer level.Close()
+
+	switch l {
+	case ActiveHigh:
+		level.Write([]byte("0"))
+	case ActiveLow:
+		level.Write([]byte("1"))
+	default:
+		return errors.New("Invalid logic level setting.")
+	}
+	return nil
 }
 
 func openPin(p Pin, write bool) Pin {
@@ -98,7 +131,7 @@ func openPin(p Pin, write bool) Pin {
 	return p
 }
 
-func readPin(p Pin) (val uint, err error) {
+func readPin(p Pin) (val Value, err error) {
 	file := p.f
 	file.Seek(0, 0)
 	buf := make([]byte, 1)
@@ -117,7 +150,7 @@ func readPin(p Pin) (val uint, err error) {
 	}
 }
 
-func writePin(p Pin, v uint) error {
+func writePin(p Pin, v Value) error {
 	var buf []byte
 	switch v {
 	case 0:
