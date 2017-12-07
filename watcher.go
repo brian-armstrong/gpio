@@ -23,8 +23,8 @@ type watcherCmd struct {
 }
 
 type WatcherNotify struct {
-	pin   Pin
-	value Value
+	Pin   Pin
+	Value Value
 }
 
 type fdHeap []uintptr
@@ -94,8 +94,8 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 				os.Exit(1)
 			}
 			msg := WatcherNotify{
-				pin:   pin,
-				value: val,
+				Pin:   pin,
+				Value: val,
 			}
 			select {
 			case w.NotifyChan <- msg:
@@ -229,7 +229,7 @@ func (w *Watcher) RemovePin(p uint) {
 // Also, if the input is connected to a mechanical switch, the user of this library must deal with debouncing
 func (w *Watcher) Watch() (p uint, v Value) {
 	notification := <-w.NotifyChan
-	return notification.pin.Number, notification.value
+	return notification.Pin.Number, notification.Value
 }
 
 // Close stops the watcher and releases all resources
