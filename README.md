@@ -44,6 +44,8 @@ go func() {
 
 This example would print once each time the value read on either pin 22 or 27 changes. It also prints each pin once when starting.
 
+Alternately, users may receive from `watcher.Notification` directly rather than calling `watcher.Watch()`. This channel yields `WatcherNotification` objects with `Pin` and `Value` fields.
+
 License
 --------------
 3-clause BSD
