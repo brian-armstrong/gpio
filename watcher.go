@@ -22,9 +22,11 @@ type watcherCmd struct {
 	action watcherAction
 }
 
-type WatcherNotify struct {
-	Pin   Pin
-	Value Value
+// WatcherNotification represents a single pin change
+// The new value of the pin numbered by Pin is Value
+type WatcherNotification struct {
+	Pin   uint
+	Value uint
 }
 
 type fdHeap []uintptr
@@ -56,24 +58,25 @@ func (h fdHeap) FdSet() *syscall.FdSet {
 }
 
 const watcherCmdChanLen = 32
-const notifyChanLen = 32
+const notificationLen = 32
 
 // Watcher provides asynchronous notifications on input changes
 // The user should supply it pins to watch with AddPin and then wait for changes with Watch
+// Alternately, users may receive directly from the Notification channel
 type Watcher struct {
-	pins       map[uintptr]Pin
-	fds        fdHeap
-	cmdChan    chan watcherCmd
-	NotifyChan chan WatcherNotify
+	pins         map[uintptr]Pin
+	fds          fdHeap
+	cmdChan      chan watcherCmd
+	Notification chan WatcherNotification
 }
 
 // NewWatcher creates a new Watcher instance for asynchronous inputs
 func NewWatcher() *Watcher {
 	w := &Watcher{
-		pins:       make(map[uintptr]Pin),
-		fds:        fdHeap{},
-		cmdChan:    make(chan watcherCmd, watcherCmdChanLen),
-		NotifyChan: make(chan WatcherNotify, notifyChanLen),
+		pins:         make(map[uintptr]Pin),
+		fds:          fdHeap{},
+		cmdChan:      make(chan watcherCmd, watcherCmdChanLen),
+		Notification: make(chan WatcherNotification, notificationLen),
 	}
 	heap.Init(&w.fds)
 	go w.watch()
@@ -93,12 +96,12 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 				fmt.Printf("failed to read pinfile, %s", err)
 				os.Exit(1)
 			}
-			msg := WatcherNotify{
-				Pin:   pin,
+			msg := WatcherNotification{
+				Pin:   pin.Number,
 				Value: val,
 			}
 			select {
-			case w.NotifyChan <- msg:
+			case w.Notification <- msg:
 			default:
 			}
 		}
@@ -227,9 +230,10 @@ func (w *Watcher) RemovePin(p uint) {
 // Because the Watcher is not perfectly realtime it may miss very high frequency changes
 // If that happens, it's possible to see consecutive changes with the same value
 // Also, if the input is connected to a mechanical switch, the user of this library must deal with debouncing
-func (w *Watcher) Watch() (p uint, v Value) {
-	notification := <-w.NotifyChan
-	return notification.Pin.Number, notification.Value
+// Users can either use Watch() or receive from Watcher.Notification directly
+func (w *Watcher) Watch() (p uint, v uint) {
+	notification := <-w.Notification
+	return notification.Pin, notification.Value
 }
 
 // Close stops the watcher and releases all resources
