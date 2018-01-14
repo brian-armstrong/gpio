@@ -7,11 +7,11 @@ import (
 	"strconv"
 )
 
-type Direction uint
+type direction uint
 
 const (
-	InDirection Direction = iota
-	OutDirection
+	inDirection direction = iota
+	outDirection
 )
 
 type Edge uint
@@ -57,7 +57,7 @@ func unexportGPIO(p Pin) {
 	export.Write([]byte(strconv.Itoa(int(p.Number))))
 }
 
-func setDirection(p Pin, d Direction, initialValue uint) {
+func setDirection(p Pin, d direction, initialValue uint) {
 	dir, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", p.Number), os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Printf("failed to open gpio %d direction file for writing\n", p.Number)
@@ -66,11 +66,11 @@ func setDirection(p Pin, d Direction, initialValue uint) {
 	defer dir.Close()
 
 	switch {
-	case d == InDirection:
+	case d == inDirection:
 		dir.Write([]byte("in"))
-	case d == OutDirection && initialValue == 0:
+	case d == outDirection && initialValue == 0:
 		dir.Write([]byte("low"))
-	case d == OutDirection && initialValue == 1:
+	case d == outDirection && initialValue == 1:
 		dir.Write([]byte("high"))
 	default:
 		panic(fmt.Sprintf("setDirection called with invalid direction or initialValue, %d, %d", d, initialValue))
@@ -131,7 +131,7 @@ func openPin(p Pin, write bool) Pin {
 	return p
 }
 
-func readPin(p Pin) (val Value, err error) {
+func readPin(p Pin) (val uint, err error) {
 	file := p.f
 	file.Seek(0, 0)
 	buf := make([]byte, 1)
@@ -150,7 +150,7 @@ func readPin(p Pin) (val Value, err error) {
 	}
 }
 
-func writePin(p Pin, v Value) error {
+func writePin(p Pin, v uint) error {
 	var buf []byte
 	switch v {
 	case 0:

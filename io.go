@@ -8,22 +8,20 @@ import (
 
 // Pin represents a single pin, which can be used either for reading or writing
 type Pin struct {
-	Number     uint
-	direction  Direction
-	logicLevel LogicLevel
-	f          *os.File
+	Number    uint
+	direction direction
+	f         *os.File
 }
 
 // NewInput opens the given pin number for reading. The number provided should be the pin number known by the kernel
-func NewInput(p uint, logicLevel LogicLevel) Pin {
+func NewInput(p uint) Pin {
 	pin := Pin{
 		Number: p,
 	}
 	exportGPIO(pin)
 	time.Sleep(10 * time.Millisecond)
-	pin.direction = InDirection
-	setDirection(pin, InDirection, 0)
-	setLogicLevel(pin, logicLevel)
+	pin.direction = inDirection
+	setDirection(pin, inDirection, 0)
 	pin = openPin(pin, false)
 	return pin
 }
@@ -40,8 +38,8 @@ func NewOutput(p uint, initHigh bool) Pin {
 	if initHigh {
 		initVal = uint(1)
 	}
-	pin.direction = OutDirection
-	setDirection(pin, OutDirection, initVal)
+	pin.direction = outDirection
+	setDirection(pin, outDirection, initVal)
 	pin = openPin(pin, true)
 	return pin
 }
@@ -52,16 +50,22 @@ func (p Pin) Close() {
 }
 
 // Read returns the value read at the pin as reported by the kernel. This should only be used for input pins
-func (p Pin) Read() (value Value, err error) {
-	if p.direction != InDirection {
+func (p Pin) Read() (value uint, err error) {
+	if p.direction != inDirection {
 		return 0, errors.New("pin is not configured for input")
 	}
 	return readPin(p)
 }
 
+// SetLogicLevel sets the logic level for the Pin. This can be
+// either "active high" or "active low"
+func (p Pin) SetLogicLevel(logicLevel LogicLevel) error {
+	return setLogicLevel(p, logicLevel)
+}
+
 // High sets the value of an output pin to logic high
 func (p Pin) High() error {
-	if p.direction != OutDirection {
+	if p.direction != outDirection {
 		return errors.New("pin is not configured for output")
 	}
 	return writePin(p, 1)
@@ -69,7 +73,7 @@ func (p Pin) High() error {
 
 // Low sets the value of an output pin to logic low
 func (p Pin) Low() error {
-	if p.direction != OutDirection {
+	if p.direction != outDirection {
 		return errors.New("pin is not configured for output")
 	}
 	return writePin(p, 0)
