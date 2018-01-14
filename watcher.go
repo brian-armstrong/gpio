@@ -52,7 +52,7 @@ func (h *fdHeap) Pop() interface{} {
 func (h fdHeap) FdSet() *syscall.FdSet {
 	fdset := &syscall.FdSet{}
 	for _, val := range h {
-		fdset.Bits[val/64] |= 1 << uint(val) % 64
+		fdset.Bits[val/64] |= 1 << (uint(val) % 64)
 	}
 	return fdset
 }
@@ -85,7 +85,7 @@ func NewWatcher() *Watcher {
 
 func (w *Watcher) notify(fdset *syscall.FdSet) {
 	for _, fd := range w.fds {
-		if (fdset.Bits[fd/64] & (1 << uint(fd) % 64)) != 0 {
+		if (fdset.Bits[fd/64] & (1 << (uint(fd) % 64))) != 0 {
 			pin := w.pins[fd]
 			val, err := pin.Read()
 			if err != nil {
@@ -114,7 +114,7 @@ func (w *Watcher) fdSelect() {
 		Usec: 0,
 	}
 	fdset := w.fds.FdSet()
-	changed, err := doSelect(int(w.fds[0]+1), nil, nil, fdset, timeval)
+	changed, err := doSelect(int(w.fds[0])+1, nil, nil, fdset, timeval)
 	if err != nil {
 		fmt.Printf("failed to call syscall.Select, %s", err)
 		os.Exit(1)
