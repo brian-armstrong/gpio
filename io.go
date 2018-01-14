@@ -57,6 +57,12 @@ func (p Pin) Read() (value uint, err error) {
 	return readPin(p)
 }
 
+// SetLogicLevel sets the logic level for the Pin. This can be
+// either "active high" or "active low"
+func (p Pin) SetLogicLevel(logicLevel LogicLevel) error {
+	return setLogicLevel(p, logicLevel)
+}
+
 // High sets the value of an output pin to logic high
 func (p Pin) High() error {
 	if p.direction != outDirection {
