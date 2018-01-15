@@ -47,6 +47,7 @@ func NewOutput(p uint, initHigh bool) Pin {
 // Close releases the resources related to Pin
 func (p Pin) Close() {
 	p.f.Close()
+	unexportGPIO(p)
 }
 
 // Read returns the value read at the pin as reported by the kernel. This should only be used for input pins
