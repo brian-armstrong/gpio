@@ -44,9 +44,17 @@ func NewOutput(p uint, initHigh bool) Pin {
 	return pin
 }
 
-// Close releases the resources related to Pin
+// Close releases the resources related to Pin. This doen't unexport Pin, use Cleanup() instead
 func (p Pin) Close() {
-	p.f.Close()
+	if p.f != nil {
+		p.f.Close()
+		p.f = nil
+	}
+}
+
+// Cleanup close Pin and unexport it
+func (p Pin) Cleanup() {
+	p.Close()
 	unexportGPIO(p)
 }
 
