@@ -38,6 +38,9 @@ const (
 )
 
 func exportGPIO(p Pin) {
+	if _, err := os.Stat(fmt.Sprintf("/sys/class/gpio/gpio%d", int(p.Number))); err == nil {
+		return nil
+	}
 	export, err := os.OpenFile("/sys/class/gpio/export", os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Printf("failed to open gpio export file for writing\n")
