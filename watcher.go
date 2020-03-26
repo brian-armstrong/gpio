@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"fmt"
 	"io"
-	"os"
 	"syscall"
 	"time"
 )
@@ -94,7 +93,7 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 					continue
 				}
 				fmt.Printf("failed to read pinfile, %s", err)
-				os.Exit(1)
+				return
 			}
 			msg := WatcherNotification{
 				Pin:   pin.Number,
@@ -113,14 +112,25 @@ func (w *Watcher) fdSelect() {
 		Sec:  1,
 		Usec: 0,
 	}
-	fdset := w.fds.FdSet()
-	changed, err := doSelect(int(w.fds[0])+1, nil, nil, fdset, timeval)
-	if err != nil {
-		fmt.Printf("failed to call syscall.Select, %s", err)
-		os.Exit(1)
-	}
-	if changed {
-		w.notify(fdset)
+
+	for {
+		fdset := w.fds.FdSet()
+		changed, err := doSelect(int(w.fds[0])+1, nil, nil, fdset, timeval)
+		if err == syscall.EINTR {
+			fmt.Println("interrupted!")
+			continue
+		}
+
+		if err != nil {
+			fmt.Printf("failed to call syscall.Select, %s", err)
+			break
+		}
+
+		if changed {
+			w.notify(fdset)
+		}
+
+		break
 	}
 }
 
