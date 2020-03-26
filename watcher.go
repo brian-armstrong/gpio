@@ -117,7 +117,6 @@ func (w *Watcher) fdSelect() {
 		fdset := w.fds.FdSet()
 		changed, err := doSelect(int(w.fds[0])+1, nil, nil, fdset, timeval)
 		if err == syscall.EINTR {
-			fmt.Println("interrupted!")
 			continue
 		}
 
