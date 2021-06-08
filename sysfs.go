@@ -37,24 +37,28 @@ const (
 	Active   Value = 1
 )
 
-func exportGPIO(p Pin) {
+func exportGPIO(p Pin) error {
 	export, err := os.OpenFile("/sys/class/gpio/export", os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Printf("failed to open gpio export file for writing\n")
-		os.Exit(1)
+		return err
 	}
 	defer export.Close()
+
 	export.Write([]byte(strconv.Itoa(int(p.Number))))
+	return nil
 }
 
-func unexportGPIO(p Pin) {
+func unexportGPIO(p Pin) error {
 	export, err := os.OpenFile("/sys/class/gpio/unexport", os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Printf("failed to open gpio unexport file for writing\n")
-		os.Exit(1)
+		return err
 	}
 	defer export.Close()
+
 	export.Write([]byte(strconv.Itoa(int(p.Number))))
+	return nil
 }
 
 func setDirection(p Pin, d direction, initialValue uint) {
