@@ -212,7 +212,7 @@ func (w *Watcher) AddPin(p uint) {
 // Logic level can be active high or active low.
 // The pin provided should be the pin known by the kernel.
 func (w *Watcher) AddPinWithEdgeAndLogic(p uint, edge Edge, logicLevel LogicLevel) {
-	pin, err := NewInput(p)
+	pin, err := NewInput(p, false)
 	if err != nil {
 		fmt.Printf("failed to create new input, %s", err)
 		os.Exit(1)

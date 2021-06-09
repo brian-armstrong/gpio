@@ -14,14 +14,16 @@ type Pin struct {
 }
 
 // NewInput opens the given pin number for reading. The number provided should be the pin number known by the kernel
-func NewInput(p uint) (Pin, error) {
+func NewInput(p uint, bypassExport bool) (Pin, error) {
 	pin := Pin{
 		Number: p,
 	}
 
-	err := exportGPIO(pin)
-	if err != nil {
-		return pin, err
+	if !bypassExport {
+		err := exportGPIO(pin)
+		if err != nil {
+			return pin, err
+		}
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -34,14 +36,16 @@ func NewInput(p uint) (Pin, error) {
 
 // NewOutput opens the given pin number for writing. The number provided should be the pin number known by the kernel
 // NewOutput also needs to know whether the pin should be initialized high (true) or low (false)
-func NewOutput(p uint, initHigh bool) (Pin, error) {
+func NewOutput(p uint, initHigh bool, bypassExport bool) (Pin, error) {
 	pin := Pin{
 		Number: p,
 	}
 
-	err := exportGPIO(pin)
-	if err != nil {
-		return pin, err
+	if !bypassExport {
+		err := exportGPIO(pin)
+		if err != nil {
+			return pin, err
+		}
 	}
 
 	time.Sleep(10 * time.Millisecond)
