@@ -29,9 +29,7 @@ func NewInput(p uint, bypassExport bool) (Pin, error) {
 	time.Sleep(10 * time.Millisecond)
 	pin.direction = inDirection
 	setDirection(pin, inDirection, 0)
-	pin = openPin(pin, false)
-
-	return pin, nil
+	return openPin(pin, false)
 }
 
 // NewOutput opens the given pin number for writing. The number provided should be the pin number known by the kernel
@@ -55,9 +53,7 @@ func NewOutput(p uint, initHigh bool, bypassExport bool) (Pin, error) {
 	}
 	pin.direction = outDirection
 	setDirection(pin, outDirection, initVal)
-	pin = openPin(pin, true)
-
-	return pin, nil
+	return openPin(pin, true)
 }
 
 // Close releases the resources related to Pin. This doen't unexport Pin, use Cleanup() instead

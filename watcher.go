@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"syscall"
 	"time"
@@ -93,8 +94,7 @@ func (w *Watcher) notify(fdset *syscall.FdSet) {
 					w.removeFd(fd)
 					continue
 				}
-				fmt.Printf("failed to read pinfile, %s", err)
-				os.Exit(1)
+				log.Panicf("failed to read pinfile, %s", err)
 			}
 			msg := WatcherNotification{
 				Pin:   pin.Number,
@@ -211,11 +211,10 @@ func (w *Watcher) AddPin(p uint) {
 // Edges can be configured to be either rising, falling, or both.
 // Logic level can be active high or active low.
 // The pin provided should be the pin known by the kernel.
-func (w *Watcher) AddPinWithEdgeAndLogic(p uint, edge Edge, logicLevel LogicLevel) {
+func (w *Watcher) AddPinWithEdgeAndLogic(p uint, edge Edge, logicLevel LogicLevel) error {
 	pin, err := NewInput(p, false)
 	if err != nil {
-		fmt.Printf("failed to create new input, %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to create new input, %s", err)
 	}
 	setLogicLevel(pin, logicLevel)
 	setEdgeTrigger(pin, edge)
@@ -223,6 +222,8 @@ func (w *Watcher) AddPinWithEdgeAndLogic(p uint, edge Edge, logicLevel LogicLeve
 		pin:    pin,
 		action: watcherAdd,
 	}
+
+	return nil
 }
 
 // RemovePin stops the watcher from watching the specified pin

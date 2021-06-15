@@ -61,11 +61,10 @@ func unexportGPIO(p Pin) error {
 	return nil
 }
 
-func setDirection(p Pin, d direction, initialValue uint) {
+func setDirection(p Pin, d direction, initialValue uint) error {
 	dir, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", p.Number), os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Printf("failed to open gpio %d direction file for writing\n", p.Number)
-		os.Exit(1)
+		return fmt.Errorf("failed to open gpio %d direction file for writing\n", p.Number)
 	}
 	defer dir.Close()
 
@@ -77,15 +76,16 @@ func setDirection(p Pin, d direction, initialValue uint) {
 	case d == outDirection && initialValue == 1:
 		dir.Write([]byte("high"))
 	default:
-		panic(fmt.Sprintf("setDirection called with invalid direction or initialValue, %d, %d", d, initialValue))
+		return fmt.Errorf("setDirection called with invalid direction or initialValue, %d, %d", d, initialValue)
 	}
+
+	return nil
 }
 
-func setEdgeTrigger(p Pin, e Edge) {
+func setEdgeTrigger(p Pin, e Edge) error {
 	edge, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/edge", p.Number), os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Printf("failed to open gpio %d edge file for writing\n", p.Number)
-		os.Exit(1)
+		return fmt.Errorf("failed to open gpio %d edge file for writing\n", p.Number)
 	}
 	defer edge.Close()
 
@@ -99,8 +99,10 @@ func setEdgeTrigger(p Pin, e Edge) {
 	case EdgeBoth:
 		edge.Write([]byte("both"))
 	default:
-		panic(fmt.Sprintf("setEdgeTrigger called with invalid edge %d", e))
+		return fmt.Errorf("setEdgeTrigger called with invalid edge %d", e)
 	}
+
+	return nil
 }
 
 func setLogicLevel(p Pin, l LogicLevel) error {
@@ -121,18 +123,17 @@ func setLogicLevel(p Pin, l LogicLevel) error {
 	return nil
 }
 
-func openPin(p Pin, write bool) Pin {
+func openPin(p Pin, write bool) (Pin, error) {
 	flags := os.O_RDONLY
 	if write {
 		flags = os.O_RDWR
 	}
 	f, err := os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/value", p.Number), flags, 0600)
 	if err != nil {
-		fmt.Printf("failed to open gpio %d value file for reading\n", p.Number)
-		os.Exit(1)
+		return Pin{}, fmt.Errorf("failed to open gpio %d value file for reading\n", p.Number)
 	}
 	p.f = f
-	return p
+	return p, nil
 }
 
 func readPin(p Pin) (val uint, err error) {
